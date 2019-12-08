@@ -1,6 +1,7 @@
 package com.int28h.grouping;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
@@ -58,10 +59,10 @@ public class DataGrouping {
      * Структура для хранения мап с нужными данными
      */
     private static class Data {
-        public final HashMap<LocalDate, Double> statsDates;
-        public final HashMap<String, Double> statsOffices;
+        public final HashMap<LocalDate, BigDecimal> statsDates;
+        public final HashMap<String, BigDecimal> statsOffices;
 
-        public Data(HashMap<LocalDate, Double> statsDates, HashMap<String, Double> statsOffices) {
+        public Data(HashMap<LocalDate, BigDecimal> statsDates, HashMap<String, BigDecimal> statsOffices) {
             this.statsDates = statsDates;
             this.statsOffices = statsOffices;
         }
@@ -74,8 +75,8 @@ public class DataGrouping {
      * @return объект Data с заполненными мапами дата-сумма и точка-сумма
      */
     private static Data readData(String[] inputFilenames) {
-        HashMap<LocalDate, Double> statsDates = new HashMap<>();
-        HashMap<String, Double> statsOffices = new HashMap<>();
+        HashMap<LocalDate, BigDecimal> statsDates = new HashMap<>();
+        HashMap<String, BigDecimal> statsOffices = new HashMap<>();
 
         for (String inputFilename : inputFilenames) {
             try (BufferedReader br = new BufferedReader(new FileReader(inputFilename))) {
@@ -88,10 +89,10 @@ public class DataGrouping {
 
                     LocalDate date = LocalDate.parse(substrings[0]);
                     String office = substrings[2];
-                    Double sum = Double.parseDouble(substrings[4]);
+                    BigDecimal sum = new BigDecimal(substrings[4]);
 
-                    statsDates.put(date, statsDates.getOrDefault(date, 0.0) + sum);
-                    statsOffices.put(office, statsOffices.getOrDefault(office, 0.0) + sum);
+                    statsDates.merge(date, sum, (oldVal, newVal) -> oldVal.add(newVal));
+                    statsOffices.merge(office, sum, (oldVal, newVal) -> oldVal.add(newVal));
                 }
             } catch (IOException e) {
                 throw new IllegalStateException(e);
