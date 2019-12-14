@@ -9,6 +9,8 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
+import static java.lang.Integer.*;
+
 public class DataGeneration {
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC+00:00"));
@@ -27,7 +29,7 @@ public class DataGeneration {
      * @param endDate   конец временного интервала
      * @return случайная дата в интервале между входными датами
      */
-    public static Instant randomDate(Instant startDate, Instant endDate) {
+    private static Instant randomDate(Instant startDate, Instant endDate) {
         long startSeconds = startDate.getEpochSecond();
         long endSeconds = endDate.getEpochSecond();
         long random = ThreadLocalRandom.current().nextLong(startSeconds, endSeconds);
@@ -43,7 +45,7 @@ public class DataGeneration {
      */
     private static ArrayList<String> readOffices(String inputFilename) {
         try (BufferedReader br = new BufferedReader(new FileReader(inputFilename))) {
-            return (ArrayList<String>) br.lines().collect(Collectors.toList());
+            return (ArrayList<String>) br.lines().parallel().collect(Collectors.toList());
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
@@ -53,9 +55,9 @@ public class DataGeneration {
      * Структура для хранения значений входных параметров
      */
     private static class Parameters {
-        public final String inputFilename;
-        public final int operationsCount;
-        public final String[] outputFilenames;
+        final String inputFilename;
+        final int operationsCount;
+        final String[] outputFilenames;
 
         private Parameters(String inputFilename, int operationsCount, String[] outputFilenames) {
             this.inputFilename = inputFilename;
@@ -68,7 +70,7 @@ public class DataGeneration {
      * Парсинг входных параметров
      *
      * @param args массив входных параметров
-     * @return класс Parameters с заполненными полями
+     * @return объект класса Parameters с заполненными полями
      */
     private static Parameters parseParametersFromCommandLine(String[] args) {
         if (args.length < 3) {
@@ -81,9 +83,9 @@ public class DataGeneration {
         }
         String inputFilename = args[0];
 
-        int operationsCount = 0;
+        int operationsCount;
         try {
-            operationsCount = Integer.parseInt(args[1]);
+            operationsCount = parseInt(args[1]);
         } catch (NumberFormatException e) {
             throw new IllegalStateException("Второй параметр - количество операций - должен быть целочисленного типа.");
         }
@@ -100,8 +102,8 @@ public class DataGeneration {
      * @param endDate конец временного отрезка для генерации случайных даты-времени
      * @param countPerFile число операций для записи в файл
      * @param counter счётчик операций
-     * @param bw
-     * @return
+     * @param bw поток вывода в файл
+     * @return увеличенный счетчик операций
      */
     private static int writeData(List<String> offices, Instant startDate, Instant endDate, int countPerFile, int counter, BufferedWriter bw) {
         Random random = ThreadLocalRandom.current();
@@ -125,8 +127,8 @@ public class DataGeneration {
 
     /**
      * Возвращает случайное double-число в промежутке от 10000.12 до 100000.50
-     * @param random
-     * @return
+     * @param random генератор рандомных чисел
+     * @return случайное double-число в промежутке от 10000.12 до 100000.50
      */
     private static double randomDoubleInRange(Random random){
         return 10000.12 + (100000.50 - 10000.12) * random.nextDouble();

@@ -5,8 +5,11 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Map;
 
 public class DataGrouping {
     private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("###.##");
@@ -21,9 +24,9 @@ public class DataGrouping {
      * Структура для хранения значений входных параметров
      */
     private static class Parameters {
-        public final String outputFilenameDates;
-        public final String outputFilenameOffices;
-        public final String[] inputFilenames;
+        final String outputFilenameDates;
+        final String outputFilenameOffices;
+        final String[] inputFilenames;
 
         private Parameters(String outputFilenameDates, String outputFilenameOffices, String[] inputFilenames) {
             this.outputFilenameDates = outputFilenameDates;
@@ -59,10 +62,10 @@ public class DataGrouping {
      * Структура для хранения мап с нужными данными
      */
     private static class Data {
-        public final HashMap<LocalDate, BigDecimal> statsDates;
-        public final HashMap<String, BigDecimal> statsOffices;
+        final HashMap<LocalDate, BigDecimal> statsDates;
+        final HashMap<String, BigDecimal> statsOffices;
 
-        public Data(HashMap<LocalDate, BigDecimal> statsDates, HashMap<String, BigDecimal> statsOffices) {
+        Data(HashMap<LocalDate, BigDecimal> statsDates, HashMap<String, BigDecimal> statsOffices) {
             this.statsDates = statsDates;
             this.statsOffices = statsOffices;
         }
@@ -87,15 +90,19 @@ public class DataGrouping {
                     }
                     String[] substrings = line.split(" ");
 
-                    LocalDate date = LocalDate.parse(substrings[0]);
-                    String office = substrings[2];
-                    BigDecimal sum = new BigDecimal(substrings[4]);
+                    try{
+                        LocalDate date = LocalDate.parse(substrings[0]);
+                        String office = substrings[2];
+                        BigDecimal sum = new BigDecimal(substrings[4]);
 
-                    statsDates.merge(date, sum, (oldVal, newVal) -> oldVal.add(newVal));
-                    statsOffices.merge(office, sum, (oldVal, newVal) -> oldVal.add(newVal));
+                        statsDates.merge(date, sum, BigDecimal::add);
+                        statsOffices.merge(office, sum, BigDecimal::add);
+                    } catch(IndexOutOfBoundsException | NumberFormatException | DateTimeParseException e){
+                        throw new IllegalStateException("Ошибка обработки входных файлов - в файле " + inputFilename + " некорректные данные в строке " + line);
+                    }
                 }
             } catch (IOException e) {
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Ошибка обработки входных файлов.");
             }
         }
         return new Data(statsDates, statsOffices);
@@ -110,7 +117,7 @@ public class DataGrouping {
             data.statsDates
                     .entrySet()
                     .stream()
-                    .sorted((o1, o2) -> o1.getKey().compareTo(o2.getKey()))
+                    .sorted(Comparator.comparing(Map.Entry::getKey))
                     .forEach(entry -> {
                         try {
                             bw.append(entry.getKey().toString())
