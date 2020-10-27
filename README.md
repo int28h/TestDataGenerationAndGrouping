@@ -1,4 +1,4 @@
-[DataGeneration.java](Generation/src/com/int28h/generation/DataGeneration.java)  
+[DataGeneration.java](Generation/src/com/github/int28h/generation/DataGeneration.java)  
   
 Программа создает текстовые файлы, в которых содержатся:  
 - **дата и время** (в формате `YYYY-MM-DD HH:MM:SS`)  
@@ -20,7 +20,7 @@
   
 ***
   
-[DataGrouping.java](Grouping/src/com/int28h/grouping/DataGrouping.java)  
+[DataGrouping.java](Grouping/src/com/github/int28h/grouping/DataGrouping.java)  
   
 Программа считает статистику по операциям, данные о которых берутся из файлов, сгенерированных в прошлой задаче.  
   
