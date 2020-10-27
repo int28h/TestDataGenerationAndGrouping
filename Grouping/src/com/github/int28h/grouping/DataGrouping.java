@@ -1,4 +1,4 @@
-package com.int28h.grouping;
+package com.github.int28h.grouping;
 
 import java.io.*;
 import java.math.BigDecimal;
@@ -10,9 +10,13 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class DataGrouping {
     private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("###.##");
+
+    private static ExecutorService executorService = Executors.newFixedThreadPool(2);
 
     static {
         DecimalFormatSymbols symbols = new DecimalFormatSymbols();
@@ -90,14 +94,14 @@ public class DataGrouping {
                     }
                     String[] substrings = line.split(" ");
 
-                    try{
+                    try {
                         LocalDate date = LocalDate.parse(substrings[0]);
                         String office = substrings[2];
                         BigDecimal sum = new BigDecimal(substrings[4]);
 
                         statsDates.merge(date, sum, BigDecimal::add);
                         statsOffices.merge(office, sum, BigDecimal::add);
-                    } catch(IndexOutOfBoundsException | NumberFormatException | DateTimeParseException e){
+                    } catch (IndexOutOfBoundsException | NumberFormatException | DateTimeParseException e) {
                         throw new IllegalStateException("Ошибка обработки входных файлов - в файле " + inputFilename + " некорректные данные в строке " + line);
                     }
                 }
@@ -108,47 +112,87 @@ public class DataGrouping {
         return new Data(statsDates, statsOffices);
     }
 
+    /**
+     * Задача для исполнения в отдельном потоке - группировка по датам
+     */
+    private static class DatesTask implements Runnable {
+        private Data data;
+        private Parameters parameters;
+
+        DatesTask(Data data, Parameters parameters){
+            this.data = data;
+            this.parameters = parameters;
+        }
+
+        @Override
+        public void run() {
+            System.out.println("DatesTask " + Thread.currentThread().getName());
+
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(parameters.outputFilenameDates))) {
+                data.statsDates
+                        .entrySet()
+                        .stream()
+                        .sorted(Comparator.comparing(Map.Entry::getKey))
+                        .forEach(entry -> {
+                            try {
+                                bw.append(entry.getKey().toString())
+                                        .append(' ')
+                                        .append(DECIMAL_FORMAT.format(entry.getValue()))
+                                        .append("\n");
+                            } catch (IOException e) {
+                                throw new IllegalStateException("Не удалось записать в файл.");
+                            }
+                        });
+            } catch (IOException e) {
+                throw new IllegalStateException("Не удалось записать в файл.");
+            }
+        }
+    }
+
+    /**
+     * Задача для исполнения в отдельном потоке - группировка по офисам
+     */
+    private static class OfficesTask implements Runnable {
+        private Data data;
+        private Parameters parameters;
+
+        OfficesTask(Data data, Parameters parameters){
+            this.data = data;
+            this.parameters = parameters;
+        }
+
+        @Override
+        public void run() {
+            System.out.println("OfficesTask " + Thread.currentThread().getName());
+            
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(parameters.outputFilenameOffices))) {
+                data.statsOffices
+                        .entrySet()
+                        .stream()
+                        .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue()))
+                        .forEach(entry -> {
+                            try {
+                                bw.append(entry.getKey())
+                                        .append(' ')
+                                        .append(DECIMAL_FORMAT.format(entry.getValue()))
+                                        .append("\n");
+                            } catch (IOException e) {
+                                throw new IllegalStateException("Не удалось записать в файл.");
+                            }
+                        });
+            } catch (IOException e) {
+                throw new IllegalStateException("Не удалось записать в файл.");
+            }
+        }
+    }
+
     public static void main(String[] args) {
         Parameters parameters = parseParametersFromCommandLine(args);
 
         Data data = readData(parameters.inputFilenames);
 
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(parameters.outputFilenameDates))) {
-            data.statsDates
-                    .entrySet()
-                    .stream()
-                    .sorted(Comparator.comparing(Map.Entry::getKey))
-                    .forEach(entry -> {
-                        try {
-                            bw.append(entry.getKey().toString())
-                                    .append(' ')
-                                    .append(DECIMAL_FORMAT.format(entry.getValue()))
-                                    .append("\n");
-                        } catch (IOException e) {
-                            throw new IllegalStateException("Не удалось записать в файл.");
-                        }
-                    });
-        } catch (IOException e) {
-            throw new IllegalStateException("Не удалось записать в файл.");
-        }
+        executorService.execute(new DatesTask(data, parameters));
 
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(parameters.outputFilenameOffices))) {
-            data.statsOffices
-                    .entrySet()
-                    .stream()
-                    .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue()))
-                    .forEach(entry -> {
-                        try {
-                            bw.append(entry.getKey())
-                                    .append(' ')
-                                    .append(DECIMAL_FORMAT.format(entry.getValue()))
-                                    .append("\n");
-                        } catch (IOException e) {
-                            throw new IllegalStateException("Не удалось записать в файл.");
-                        }
-                    });
-        } catch (IOException e) {
-            throw new IllegalStateException("Не удалось записать в файл.");
-        }
+        executorService.execute(new OfficesTask(data, parameters));
     }
 }

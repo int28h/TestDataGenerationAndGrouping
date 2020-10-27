@@ -1,4 +1,4 @@
-package com.int28h.generation;
+package com.github.int28h.generation;
 
 import java.io.*;
 import java.text.DecimalFormat;
