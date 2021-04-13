@@ -119,7 +119,7 @@ public class DataGrouping {
         private Data data;
         private Parameters parameters;
 
-        DatesTask(Data data, Parameters parameters){
+        DatesTask(Data data, Parameters parameters) {
             this.data = data;
             this.parameters = parameters;
         }
@@ -156,7 +156,7 @@ public class DataGrouping {
         private Data data;
         private Parameters parameters;
 
-        OfficesTask(Data data, Parameters parameters){
+        OfficesTask(Data data, Parameters parameters) {
             this.data = data;
             this.parameters = parameters;
         }
@@ -164,7 +164,7 @@ public class DataGrouping {
         @Override
         public void run() {
             System.out.println("OfficesTask " + Thread.currentThread().getName());
-            
+
             try (BufferedWriter bw = new BufferedWriter(new FileWriter(parameters.outputFilenameOffices))) {
                 data.statsOffices
                         .entrySet()
